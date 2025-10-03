@@ -1,0 +1,173 @@
+% load packages
+\usepackage{geometry}
+\usepackage{xcolor}
+\usepackage{eso-pic}
+\usepackage{fancyhdr}
+\usepackage{sectsty}
+\usepackage{fontspec}
+\usepackage{titlesec}
+
+%% Set page size with a wider right margin
+\geometry{
+  letterpaper,
+  left=10mm,
+  right=60mm,
+  top=20mm,
+  bottom=20mm
+}
+
+\usepackage{graphicx}
+\graphicspath{%
+  {_extensions/nrennie/PrettyPDF/}%
+  {../_extensions/nrennie/PrettyPDF/}%
+  {../../_extensions/nrennie/PrettyPDF/}%
+  {../../../_extensions/nrennie/PrettyPDF/}%
+  {.}%
+}
+
+% expose geometry margins as usable lengths
+\makeatletter
+\newlength{\RightMargin}\setlength{\RightMargin}{\Gm@rmargin}
+\newlength{\TopMargin}  \setlength{\TopMargin}{\Gm@tmargin}
+\makeatother
+
+% --- right margin bar + logo positioned from real margins ---
+\usepackage{eso-pic,xcolor,graphicx}
+\definecolor{light}{HTML}{E6E6FA}
+\definecolor{highlight}{HTML}{800080}
+\definecolor{dark}{HTML}{330033}
+
+% --- tweakables ---
+\newlength{\BarWidth}       \setlength{\BarWidth}{3cm}      % <-- bar thickness you want
+\newlength{\LogoWidth}      \setlength{\LogoWidth}{1.8cm}   % <-- logo width
+\newlength{\LogoPadTop}     \setlength{\LogoPadTop}{8mm}    % <-- gap below top margin
+
+% computed positions
+\newlength{\BarX}   \setlength{\BarX}{\dimexpr\paperwidth-\BarWidth\relax}
+\newlength{\LogoX}  \setlength{\LogoX}{\dimexpr\paperwidth-\BarWidth/2-\LogoWidth/2\relax}
+\newlength{\LogoY}  \setlength{\LogoY}{\dimexpr\paperheight-\TopMargin-\LogoPadTop\relax}
+
+% --- right bar + logo ---
+\AddToShipoutPictureBG{%
+  % bar: fixed width (not the whole margin)
+  \AtPageLowerLeft{%
+    \put(\LenToUnit{\BarX},0){%
+      \color{light}\rule{\LenToUnit{\BarWidth}}{\LenToUnit\paperheight}%
+    }%
+  }%
+  % logo: centered in the bar, near top. No color applied to keep original look.
+  \AtPageLowerLeft{%
+    \put(\LenToUnit{\LogoX},\LenToUnit{\LogoY}){%
+    \includegraphics[width=\LogoWidth]{logo.png}%
+    }%
+  }%
+}
+
+
+% footer aligned with text block (not in the margin bar)
+\usepackage{fancyhdr}
+\fancypagestyle{mystyle}{
+  \fancyhf{}
+  \renewcommand\headrulewidth{0pt}
+  \fancyfoot[R]{\thepage}
+  % no offset
+}
+\pagestyle{mystyle}
+
+% ensure header/footer width equals the text width
+\makeatletter
+\setlength{\headwidth}{\textwidth}
+\makeatother
+
+\setlength{\footskip}{20pt}
+
+\usepackage{etoolbox}
+\usepackage{ragged2e} % for robust ragged-right
+\AtBeginEnvironment{figure}{\RaggedRight}
+
+\let\OldFigure\figure
+\let\EndOldFigure\endfigure
+\renewenvironment{figure}{\OldFigure\RaggedRight}{\EndOldFigure}
+
+% overhang by an explicit factor (e.g., 1.20\textwidth)
+\newcommand{\overhangimage}[2][1.20\textwidth]{%
+  \noindent\makebox[\textwidth][l]{\includegraphics[width=#1]{#2}}%
+}
+
+% overhang exactly into the right margin (fill text width + margin)
+\newcommand{\overhangtorightmargin}[1]{%
+  \noindent\makebox[\textwidth][l]{%
+    \includegraphics[width=\dimexpr\textwidth+\RightMargin\relax]{#1}%
+  }%
+}
+
+
+%% style the chapter/section fonts
+\chapterfont{\color{dark}\fontsize{20}{16.8}\selectfont}
+\sectionfont{\color{dark}\fontsize{20}{16.8}\selectfont}
+\subsectionfont{\color{dark}\fontsize{14}{16.8}\selectfont}
+\titleformat{\subsection}
+  {\sffamily\Large\bfseries}{\thesection}{1em}{}[{\titlerule[0.8pt]}]
+
+% left align title
+\makeatletter
+\renewcommand{\maketitle}{\bgroup\setlength{\parindent}{0pt}
+\begin{flushleft}
+  {\sffamily\huge\textbf{\MakeUppercase{\@title}}} \vspace{0.3cm} \newline
+  {\Large {\@subtitle}} \newline
+  \@author
+\end{flushleft}\egroup
+}
+\makeatother
+
+% --- robust path detection for bundled Ubuntu fonts ---
+\newcommand\UBUNTUPATH{}%
+
+\IfFileExists{_extensions/nrennie/PrettyPDF/Ubuntu/Ubuntu-Regular.ttf}{%
+  \renewcommand\UBUNTUPATH{_extensions/nrennie/PrettyPDF/Ubuntu/}%
+}{%
+  \IfFileExists{../_extensions/nrennie/PrettyPDF/Ubuntu/Ubuntu-Regular.ttf}{%
+    \renewcommand\UBUNTUPATH{../_extensions/nrennie/PrettyPDF/Ubuntu/}%
+  }{%
+    \IfFileExists{../../_extensions/nrennie/PrettyPDF/Ubuntu/Ubuntu-Regular.ttf}{%
+      \renewcommand\UBUNTUPATH{../../_extensions/nrennie/PrettyPDF/Ubuntu/}%
+    }{%
+      \IfFileExists{../../../_extensions/nrennie/PrettyPDF/Ubuntu/Ubuntu-Regular.ttf}{%
+        \renewcommand\UBUNTUPATH{../../../_extensions/nrennie/PrettyPDF/Ubuntu/}%
+      }{%
+        \renewcommand\UBUNTUPATH{}% fallback: use system-installed fonts
+      }%
+    }%
+  }%
+}
+
+% if bundled fonts are found, use Path=..., else use system fonts
+\IfFileExists{\UBUNTUPATH Ubuntu-Regular.ttf}{%
+  \setsansfont{Ubuntu}[
+    Path=\UBUNTUPATH,
+    Scale=0.9,
+    Extension=.ttf,
+    UprightFont=*-Regular,
+    BoldFont=*-Bold,
+    ItalicFont=*-Italic,
+  ]
+  \setmainfont{Ubuntu}[
+    Path=\UBUNTUPATH,
+    Scale=0.9,
+    Extension=.ttf,
+    UprightFont=*-Regular,
+    BoldFont=*-Bold,
+    ItalicFont=*-Italic,
+  ]
+}{%
+  \setsansfont{Ubuntu}[Scale=0.9]
+  \setmainfont{Ubuntu}[Scale=0.9]
+}
+
+% gt_packages
+\usepackage{longtable,booktabs,array,multirow,wrapfig,float}
+\usepackage{pdflscape,threeparttable,threeparttablex,makecell}
+\usepackage{colortbl}
+\usepackage{caption}
+\usepackage{pdfpages}
+

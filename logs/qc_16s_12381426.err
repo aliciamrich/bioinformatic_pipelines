@@ -1,0 +1,4 @@
+Using profile workflow/profiles/hcc for setting default command line arguments.
+NameError in file "/lustre/work/richlab/aliciarich/pipeline_16s/Snakefile", line 63:
+name 'DSET' is not defined
+  File "/lustre/work/richlab/aliciarich/pipeline_16s/Snakefile", line 63, in <module>

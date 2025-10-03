@@ -1,0 +1,21 @@
+project:
+  type: default
+  execute-dir: project
+date: now
+date-format: full
+author: Alicia M. Rich, Ph.D.
+email: aliciarich@unomaha.edu
+format:
+  html:
+    css: styles/cosmo.css
+    code-fold: true
+    code-tools: true
+    toc: true
+editor: source
+
+logo: graphics/logo.png
+image: graphics/logo.png
+copyright: |
+       This document is intended solely for members of the Rich Lab for Molecular Health at UNO.
+       The content, including any data presented herein, is unpublished, private, and not for use, distribution, or publication without explicit written consent from Dr. Alicia M. Rich.
+       Any adaptation or use of this material must acknowledge and cite this unpublished work.

@@ -1,0 +1,463 @@
+# Snakefile (containers + per-rule conda; flexible dataset roots)
+# Snakefile — top section (order-safe)
+import os, glob
+from pathlib import Path
+from snakemake.exceptions import WorkflowError
+
+configfile: "config/config.yaml"
+
+# --- roots ---
+PROJ    = os.environ.get("PROJ_ROOT", os.getcwd())
+WORK    = os.environ.get("WORK",    os.path.join(PROJ, "local_work"))
+NRDSTOR = os.environ.get("NRDSTOR", os.environ.get("NRDSTOR_LOCAL", ""))
+
+def _first(*vals):
+    for v in vals:
+        if isinstance(v, str) and v.strip():
+            return v
+    return None
+
+# Expand env vars embedded in config values (e.g., "$NRDSTOR/…")
+def _expand(v):  # handles None and strings
+    return os.path.expandvars(v) if isinstance(v, str) else v
+
+# --- dataset slug resolution (allow dataset:, DATASET, or infer from reads_in) ---
+_reads_in_cfg_raw = config.get("reads_in", "")
+_reads_in_cfg = _expand(_reads_in_cfg_raw)
+
+_inferred_slug = None
+if _reads_in_cfg:
+    p = Path(_reads_in_cfg).resolve()
+    if "datasets" in p.parts and "raw" in p.parts:
+        try:
+            ds_idx = p.parts.index("datasets")
+            raw_idx = p.parts.index("raw")
+            if raw_idx > ds_idx + 1:
+                _inferred_slug = p.parts[raw_idx - 1]
+        except ValueError:
+            pass
+    if p.name == "raw" and p.parent.name:
+        _inferred_slug = p.parent.name
+
+DATASET = _first(
+    config.get("dataset", None),
+    os.environ.get("DATASET", None),
+    _inferred_slug
+)
+if not DATASET:
+    raise WorkflowError(
+        "Dataset not set. Provide one of:\n"
+        "  • config.yaml: dataset: <slug>\n"
+        "  • env var:     DATASET=<slug>\n"
+        "  • or set reads_in ending with .../datasets/<slug>/raw"
+    )
+
+# --- dataset-scoped paths (define these BEFORE any references) ---
+OUT_ROOT = _expand(config.get("out_root", None))
+if not OUT_ROOT:
+    raise WorkflowError(
+        "Config is missing 'out_root'. Set it to the parent directory where datasets live."
+    )
+
+DSET = os.path.join(OUT_ROOT, DATASET)  # e.g. /work/.../16s/culi
+OUT  = DSET
+TMP  = os.path.join(DSET, "tmp")
+
+# ---- expanded reference paths (handles $NRDSTOR etc.) ----
+ITGDB_UDB   = _expand(config.get("itgdb_udb", ""))
+SILVA_FASTA = _expand(config.get("silva_fasta", ""))
+
+# Common tunables
+MAP_ID  = float(config.get("map_id", 0.97))
+STRAND  = config.get("strand", "plus")
+THREADS = int(config.get("threads", 16))
+NANOASV = config.get("nanoasv_bin", "nanoasv")
+
+# Inputs that can depend on DSET (define AFTER DSET!)
+RAW     = _first(_reads_in_cfg, os.path.join(DSET, "raw"))
+SUBJMAP = _expand(config.get("subject_map", os.path.join(DSET, "samples", "sample_subject.tsv")))
+
+# Container images (expand any $NRDSTOR etc.)
+CONTAINERS = {
+    "minimap2": _expand(config.get("container_minimap2", f"{NRDSTOR}/containers/minimap2.sif")),
+    "iqtree2":  _expand(config.get("container_iqtree2",  f"{NRDSTOR}/containers/iqtree2.sif")),
+    "medaka":   _expand(config.get("container_medaka",   f"{NRDSTOR}/containers/medaka.sif")),
+}
+
+ENV_DIR = config.get("env_dir", "workflow/envs")
+
+# Polishing paths
+POLISH_DIR   = os.path.join(TMP, "polished")
+ALL_READS_FQ = os.path.join(POLISH_DIR, "all_reads.fastq")
+MAP_BAM_99   = os.path.join(POLISH_DIR, "map_r0.bam")
+R1_FASTA     = os.path.join(POLISH_DIR, "r1.fasta")
+MAP_BAM_R1   = os.path.join(POLISH_DIR, "map_r1.bam")
+R2_FASTA     = os.path.join(POLISH_DIR, "r2.fasta")
+POLISHED     = os.path.join(POLISH_DIR, "polished_otus.fasta")
+
+# Ensure basic dirs exist (AFTER OUT/TMP defined)
+for p in (
+    OUT, TMP,
+    os.path.join(OUT, "otu"),
+    os.path.join(OUT, "asv"),
+    os.path.join(OUT, "logs"),
+    os.path.join(OUT, "benchmarks"),
+):
+    Path(p).mkdir(parents=True, exist_ok=True)
+    
+def asv_target():
+    method = config.get("asv_method", None)
+    if not method:
+        return []
+    if method == "nanoasv":
+        return os.path.join(OUT, "asv/nanoasv/phyloseq.RData")
+    if method == "nanoclust":
+        return os.path.join(OUT, "asv/nanoclust/results.done")
+    if method == "dada2_ont":
+        return os.path.join(OUT, "asv/dada2_ont/phyloseq.RData")
+    return []
+
+# ---------------- targets ----------------
+rule all:
+    input:
+        os.path.join(TMP, "preflight.ok"),
+        os.path.join(OUT, "manifest.txt"),
+        os.path.join(OUT, "benchmarks/fastcat_filter.tsv"),
+        os.path.join(OUT, "qc/nanoplot"),
+        POLISHED,                                   # ← add
+        os.path.join(OUT, "otu/otu_table_merged.tsv"),
+        os.path.join(OUT, "otu/otu_references_aligned.fasta"),
+        os.path.join(OUT, "otu/otu_tree.treefile"),
+        os.path.join(OUT, "otu/otus_taxonomy.sintax"),
+        expand(os.path.join(OUT, "otu/otus_centroids{id}.fasta"), id=["_99", "_97"]),
+        asv_target()
+
+rule preflight:
+    input:
+        db = ITGDB_UDB
+    output:
+        touch(os.path.join(TMP, "preflight.ok"))
+    run:
+        fastqs = glob.glob(os.path.join(RAW, "*.fastq"))
+        if not fastqs:
+            raise WorkflowError(f"No FASTQs found under RAW={RAW}")
+        if not input.db or not os.path.exists(input.db) or os.path.getsize(input.db) == 0:
+            raise WorkflowError(f"SINTAX DB missing/empty: {input.db!r}")
+        for k, img in CONTAINERS.items():
+            if not img:
+                raise WorkflowError(f"Container path/URI for '{k}' not set in CONTAINERS.")        
+
+rule manifest:
+    output: os.path.join(OUT, "manifest.txt")
+    run:
+        import subprocess, yaml
+        commit = subprocess.getoutput(f"git -C {PROJ} rev-parse --short HEAD")
+        with open(output[0], "w") as fh:
+            fh.write(f"commit: {commit}\n")
+            fh.write(f"dataset: {DATASET}\n")
+            for k in ["WORK","NRDSTOR","PROJ_ROOT"]:
+                fh.write(f"{k}={os.environ.get(k,'')}\n")
+            fh.write("\nconfig:\n")
+            yaml.safe_dump(config, fh, sort_keys=False)
+
+# ---------------- QC & prep (conda) ----------------
+rule fastcat_filter:
+    input: RAW
+    output: fastq = directory(os.path.join(TMP, "filtered"))
+    threads: THREADS
+    params:
+        min_q  = lambda wc: config["min_qscore"],
+        minlen = lambda wc: config["minlength"],
+        maxlen = lambda wc: config["maxlength"],
+        exclude = lambda wc: " ".join(config.get("exclude_glob", []))
+    log: os.path.join(OUT, "logs/fastcat_filter.log")
+    benchmark: os.path.join(OUT, "benchmarks/fastcat_filter.tsv")
+    conda: f"{ENV_DIR}/fastcat.yml"
+    shell: r"""
+      set -euo pipefail
+      mkdir -p {output.fastq}
+      shopt -s nullglob
+      for fq in {input}/*.fastq; do
+        base=$(basename "$fq")
+        for pat in {params.exclude}; do
+          [[ -n "$pat" && "$base" == $pat ]] && continue 2
+        done
+        out="{output.fastq}/${{base}}"
+        fastcat --dust --min_qscore {params.min_q} \
+                --min_length {params.minlen} --max_length {params.maxlen} \
+                "$fq" > "$out"
+      done
+    """
+
+rule nanoplot_qc:
+    input: rules.fastcat_filter.output.fastq
+    output: directory(os.path.join(OUT, "qc/nanoplot"))
+    threads: 4
+    log: os.path.join(OUT, "logs/nanoplot_qc.log")
+    conda: f"{ENV_DIR}/nanoplot.yml"
+    shell: r"""
+      set -euo pipefail
+      mkdir -p {output}
+      cat {input}/*.fastq > {output}/all.fastq
+      NanoPlot --fastq {output}/all.fastq -o {output} --drop_outliers \
+               --maxlength {config[maxlength]} --minlength {config[minlength]}
+    """
+
+# ---------------- OTU branch (conda for most) ----------------
+rule isonclust3:
+    input: rules.fastcat_filter.output.fastq
+    output: directory(os.path.join(TMP, "OTUs"))
+    threads: THREADS
+    log: os.path.join(OUT, "logs/isonclust3.log")
+    conda: f"{ENV_DIR}/isonclust3.yml"
+    shell: r"""
+      set -euo pipefail
+      mkdir -p {output}
+      shopt -s nullglob
+      for fq in {input}/*.fastq; do
+        samp=$(basename "$fq" .fastq)
+        outdir="{output}/${{samp}}"
+        mkdir -p "$outdir"
+        isONclust3 --fastq "$fq" --outfolder "$outdir" --mode ont --post-cluster
+      done
+    """
+
+rule spoa_consensus:
+    input: rules.isonclust3.output
+    output: directory(os.path.join(TMP, "consensus_drafts"))
+    threads: THREADS
+    log: os.path.join(OUT, "logs/spoa_consensus.log")
+    conda: "workflow/envs/spoa.yml"
+    shell: r"""
+      set -euo pipefail
+      mkdir -p {output}
+      find {input} -type f -path "*/clustering/fastq_files/*.fastq" | while read -r fq; do
+        sample=$(basename "$(dirname "$(dirname "$fq")")")
+        cid=$(basename "$fq" .fastq)
+        out="{output}/${{sample}}_${{cid}}.fasta"
+        spoa -r 0 -l 2 -m 1 -n -2 -g -2 -e -1 "$fq" > "$out"
+      done
+    """
+    
+rule vsearch_pool_cluster:
+    input: rules.spoa_consensus.output
+    output:
+        drafts = os.path.join(TMP, "pooled/all_draft_otus.fasta"),
+        cent99 = os.path.join(OUT, "otu/otus_centroids_99.fasta"),
+        cent97 = os.path.join(OUT, "otu/otus_centroids_97.fasta")
+    threads: THREADS
+    params:
+        id_primary = lambda wc: config["otu_id_primary"],
+        id_legacy  = lambda wc: config["otu_id_legacy"]
+    log: os.path.join(OUT, "logs/vsearch_pool_cluster.log")
+    conda: f"{ENV_DIR}/vsearch.yml"
+    shell: r"""
+      set -euo pipefail
+      mkdir -p "$(dirname {output.drafts})" "$(dirname {output.cent99})"
+      cat {input}/*.fasta > {output.drafts}
+      vsearch --derep_fulllength {output.drafts} --sizeout --relabel OTU_ \
+              --threads {threads} --output {TMP}/pooled/otus_derep.fasta
+      vsearch --cluster_fast {TMP}/pooled/otus_derep.fasta --id {params.id_primary} \
+              --centroids {output.cent99} --threads {threads}
+      vsearch --cluster_fast {TMP}/pooled/otus_derep.fasta --id {params.id_legacy} \
+              --centroids {output.cent97} --threads {threads}
+    """
+
+# -- Gather reads and initial mapping (minimap2 in container) --
+rule map_all_reads:
+    input:
+        reads_dir = os.path.join(TMP, "filtered"),
+        ref_99    = os.path.join(OUT, "otu/otus_centroids_99.fasta")
+    output:
+        fq   = ALL_READS_FQ,
+        bam  = MAP_BAM_99
+    threads: THREADS
+    params:
+        minimap = CONTAINERS["minimap2"]
+    shell: r"""
+        set -euo pipefail
+        module load apptainer samtools
+        mkdir -p {POLISH_DIR}
+        cat {input.reads_dir}/*.fastq > {output.fq}
+
+        apptainer exec --bind {TMP}:{TMP} --bind {OUT}:{OUT} {params.minimap} \
+          minimap2 -t {threads} -ax map-ont {input.ref_99} {output.fq} \
+          | samtools sort -@ {threads} -o {output.bam}
+        samtools index {output.bam}
+    """
+    
+# -- Racon round 1 --
+rule racon_round1:
+    input:
+        reads = ALL_READS_FQ,
+        bam   = MAP_BAM_99,
+        ref   = os.path.join(OUT, "otu/otus_centroids_99.fasta")
+    output:
+        r1 = R1_FASTA
+    threads: THREADS
+    shell: r"""
+        set -euo pipefail
+        module load racon
+        racon -t {threads} {input.reads} {input.bam} {input.ref} > {output.r1}
+    """
+
+# -- Remap to R1 --
+rule map_r1:
+    input:
+        reads = ALL_READS_FQ,
+        r1    = R1_FASTA
+    output:
+        bam = MAP_BAM_R1
+    threads: THREADS
+    params:
+        minimap = CONTAINERS["minimap2"]
+    container: CONTAINERS["minimap2"]
+    shell: r"""
+        set -euo pipefail
+        module load apptainer samtools
+        apptainer exec --bind {TMP}:{TMP} {params.minimap} \
+          minimap2 -t {threads} -ax map-ont {input.r1} {input.reads} \
+          | samtools sort -@ {threads} -o {output.bam}
+        samtools index {output.bam}
+    """
+
+# -- Racon round 2 (draft for Medaka) --
+rule racon_round2:
+    input:
+        reads = ALL_READS_FQ,
+        bam   = MAP_BAM_R1,
+        r1    = R1_FASTA
+    output:
+        r2 = R2_FASTA
+    threads: THREADS
+    shell: r"""
+        set -euo pipefail
+        module load racon
+        racon -t {threads} {input.reads} {input.bam} {input.r1} > {output.r2}
+    """
+
+# -- Medaka (GPU or CPU based on config.medaka_gpu) -> produces final POLISHED --
+rule medaka_polish:
+    input:
+        reads = ALL_READS_FQ,
+        draft = R2_FASTA
+    output:
+        polished = POLISHED
+    threads: THREADS
+    params:
+        medaka_model = lambda wc: config["medaka_model"],
+        medaka_gpu   = lambda wc: str(config.get("medaka_gpu", True)).lower()
+    shell: r"""
+        set -euo pipefail
+        module load anaconda
+        mkdir -p {POLISH_DIR}/medaka_refined
+        if [[ "{params.medaka_gpu}" == "true" ]]; then
+          conda activate $NRDSTOR/medaka_gpu
+          medaka_consensus -i {input.reads} -d {input.draft} \
+                           -o {POLISH_DIR}/medaka_refined \
+                           -m {params.medaka_model} --bacteria
+        else
+          conda activate medaka_cpu
+          medaka_consensus -i {input.reads} -d {input.draft} \
+                           -o {POLISH_DIR}/medaka_refined \
+                           -m {params.medaka_model} --bacteria -t {threads}
+        fi
+        cp {POLISH_DIR}/medaka_refined/consensus.fasta {output.polished}
+        conda deactivate
+    """
+    
+# ---------------- taxonomy/tree (conda + container for IQ-TREE) ----------------
+rule chimera_taxonomy_tree:
+    input:
+        fasta = POLISHED,
+        db    = ITGDB_UDB
+    output:
+        nonchim = os.path.join(OUT, "otu/otus_clean.fasta"),
+        chimera = os.path.join(OUT, "otu/otus_chimeras.fasta"),
+        sintax  = os.path.join(OUT, "otu/otus_taxonomy.sintax"),
+        msa     = os.path.join(OUT, "otu/otu_references_aligned.fasta")
+    threads: THREADS
+    log: os.path.join(OUT, "logs/chimera_taxonomy_tree.log")
+    conda: f"{ENV_DIR}/vsearch_mafft.yml"
+    shell: r"""
+      set -euo pipefail
+      mkdir -p {OUT}/otu
+      vsearch --uchime_denovo {input.fasta} --nonchimeras {output.nonchim} \
+              --chimeras {output.chimera} --threads {threads}
+      vsearch --sintax {output.nonchim} --db {input.db} \
+              --sintax_cutoff 0.7 --tabbedout {output.sintax} --threads {threads}
+      mafft --auto --thread {threads} {output.nonchim} > {output.msa}
+    """
+
+rule iqtree2_tree:
+    input: msa = rules.chimera_taxonomy_tree.output.msa
+    output: tree = os.path.join(OUT, "otu/otu_tree.treefile")
+    threads: THREADS
+    log: os.path.join(OUT, "logs/iqtree2_tree.log")
+    container: CONTAINERS["iqtree2"]
+    shell: r"""
+      set -euo pipefail
+      iqtree2 -s {input.msa} -nt AUTO -m TEST -bb 1000 -alrt 1000 -pre {OUT}/otu/otu_tree
+      # iqtree writes {OUT}/otu/otu_tree.treefile; ensure it exists as our declared output
+      test -s {output.tree}
+    """
+
+# ---------------- per-sample OTU table & merge (conda) ----------------
+rule otu_table_per_sample:
+    input:
+        refs   = rules.chimera_taxonomy_tree.output.nonchim,
+        reads  = rules.fastcat_filter.output.fastq
+    output:
+        merged = os.path.join(OUT, "otu/otu_table_merged.tsv")
+    threads: THREADS
+    log: os.path.join(OUT, "logs/otu_table_per_sample.log")
+    conda: f"{ENV_DIR}/vsearch_py.yml"
+    shell: r"""
+      set -euo pipefail
+      mkdir -p {OUT}/otu/tables
+      shopt -s nullglob
+      for fq in {input.reads}/*.fastq; do
+        sid=$(basename "$fq" .fastq)
+        vsearch --usearch_global "$fq" --db {input.refs} --id {MAP_ID} --strand {STRAND} \
+                --otutabout {OUT}/otu/tables/otu_table_${{sid}}.tsv --threads {threads}
+      done
+      python - <<'PY'
+      import glob, os, pandas as pd
+      out = r"{output.merged}"
+      tables = glob.glob(os.path.join(r"{OUT}", "otu", "tables", "otu_table_*.tsv"))
+      dfs = [pd.read_csv(t, sep="\t") for t in tables]
+      if not dfs:
+          raise SystemExit("No per-sample OTU tables found to merge.")
+      
+      # Rename the first column to OTU without using braces
+      for d in dfs:
+          first = d.columns[0]
+          d.rename(columns=dict([(first, "OTU")]), inplace=True)
+      
+      from functools import reduce
+      merged = reduce(lambda l, r: pd.merge(l, r, on="OTU", how="outer"), dfs).fillna(0)
+      merged.to_csv(out, sep="\t", index=False)
+      PY
+    """
+
+# ---------------- ASV branch (NanoASV optional) ----------------
+rule asv_nanoasv:
+    input: rules.fastcat_filter.output.fastq
+    output: os.path.join(OUT, "asv/nanoasv/phyloseq.RData")
+    threads: THREADS
+    log: os.path.join(OUT, "logs/asv_nanoasv.log")
+    conda: f"{ENV_DIR}/nanoasv.yml"
+    run:
+        if config.get("asv_method", None) != "nanoasv":
+            shell("mkdir -p {OUT}/asv/nanoasv && : > {OUT}/asv/nanoasv/phyloseq.RData")
+        else:
+            shell(r"""
+              set -euo pipefail
+              mkdir -p {OUT}/asv/nanoasv
+              {NANOASV} --dir {input} --out {OUT}/asv/nanoasv \
+                        --reference {SILVA_FASTA} \
+                        --subsampling {config[nanoasv_opts][subsample_per_barcode]} \
+                        --samtools-qual {config[nanoasv_opts][mapq]}
+            """)
+            
+            

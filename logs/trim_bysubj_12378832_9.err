@@ -1,0 +1,6 @@
+[2025-10-03 14:58:14.483] [info] Running: "trim" "--sequencing-kit" "SQK-16S114-24" "--emit-fastq" "/work/richlab/aliciarich/read_processing/reads/loris/demuxed/samples_bam/hdz9/89aaea27-763c-4f48-a992-78ad9b987320_HDZ-035-S185.bam"
+[2025-10-03 14:58:14.642] [info]  - Note: FASTQ output is not recommended as not all data can be preserved.
+[2025-10-03 14:58:14.649] [info] > starting adapter/primer trimming
+> Output records written: 2985> Output records written: 6121> Output records written: 9877> Output records written: 12681> Output records written: 12681[2025-10-03 14:58:15.053] [info] > Finished in (ms): 400
+[2025-10-03 14:58:15.053] [info] > Reads written: 12681
+[2025-10-03 14:58:15.053] [info] > finished adapter/primer trimming

@@ -1,0 +1,24 @@
+---
+title: "swan_exec"
+format: html
+eval: false
+---
+
+```{bash}
+cd $PROJ_ROOT/workflow
+snakemake --profile profiles/hcc --cores 32 --configfile ../config/config.yaml
+```
+
+```{bash}
+# template you can `include:` in shell blocks
+SCRATCH="/scratch/${USER}/${SLURM_JOB_ID}"
+mkdir -p "$SCRATCH"
+trap 'cp -r "$SCRATCH/"* "$FINAL_OUT/" 2>/dev/null || true' EXIT
+
+# copy in
+cp "$IN_FASTQ" "$SCRATCH/"
+# run tool writing to $SCRATCH
+vsearch --cluster_fast "$SCRATCH/in.fasta" --id 0.99 --centroids "$SCRATCH/centroids.fasta"
+# results will be auto-copied to $FINAL_OUT on EXIT
+```
+

@@ -1,0 +1,4 @@
+channels: [bioconda, conda-forge, defaults]
+dependencies:
+  - nanoplot=1.42.0
+  - python=3.11

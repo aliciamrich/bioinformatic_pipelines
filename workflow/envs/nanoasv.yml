@@ -1,0 +1,5 @@
+channels: [bioconda, conda-forge, defaults]
+dependencies:
+  - nanoasv=1.6.0
+  - samtools=1.20
+  - python=3.10

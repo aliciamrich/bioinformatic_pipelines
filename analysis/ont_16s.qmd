@@ -1,0 +1,54 @@
+---
+title: "OTU branch — culi"
+params:
+  cfg: "config/config.yaml"
+---
+
+```{r}
+# in the qmd
+library(yaml) 
+library(fs)
+source("resources/lab_paths.R")
+cfg <- yaml::read_yaml(params$cfg)
+
+paths <- lab_paths()
+DATASET <- cfg$dataset
+dir_otu <- path_work("datasets", DATASET, "otu")
+
+otu_table   <- readr::read_tsv(fs::path(dir_otu, "otu_table_merged.tsv"))
+otu_tree    <- fs::path(dir_otu, "otu_references_aligned.fasta.treefile")
+otu_tax     <- fs::path(dir_otu, "otus_taxonomy.sintax")
+```
+
+
+```{r}
+library(tidyverse)
+library(phyloseq)
+
+root <- "/work/richlab/aliciarich/read_processing/processed/loris/culi"
+
+# OTUs
+otu_tab <- read_tsv(file.path(root, "otu/otu_table_merged.tsv"))
+tax     <- read_tsv(file.path(root, "otu/otus_taxonomy.sintax"),
+                col_names = c("seq", "sintax"))
+# parse SINTAX to ranks
+parse_sintax <- function(x) {
+  ranks <- str_match_all(x, "([kdpfcofgs]):([^,]+)")[[1]]
+  tibble(rank = ranks[,2], taxon = ranks[,3]) |> 
+    pivot_wider(names_from = rank, values_from = taxon)
+}
+tax_parsed <- tax |>
+  mutate(parsed = map(sintax, parse_sintax)) |>
+  unnest(parsed)
+
+# ASV (NanoASV)
+load(file.path(root, "asv/nanoasv/phyloseq.RData"))  # loads object, e.g., ps
+# Now you have `ps` with an ASV table, taxonomy and tree ready to integrate.
+
+# If desired, assemble an OTU phyloseq:
+otu_mat <- as.matrix(otu_tab[-1])
+rownames(otu_mat) <- otu_tab[[1]]
+OTU <- otu_table(otu_mat, taxa_are_rows = TRUE)
+# add sample_data & phy_tree as you prefer
+```
+

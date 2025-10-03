@@ -1,0 +1,35 @@
+# config/config.yaml
+project: culi_16S
+dataset: culi
+
+# thresholds
+minlength: 1300
+maxlength: 1700
+min_qscore: 15
+
+out_root: "/work/richlab/aliciarich/datasets/16s"
+reads_in: "/work/richlab/aliciarich/datasets/16s/culi/raw"
+
+# references
+itgdb_udb:   "/mnt/nrdstor/richlab/aliciarich/databases/itgdb_16s/taxa_itgdb.udb"
+silva_fasta: "/mnt/nrdstor/richlab/aliciarich/databases/silva138/SILVA_138.2_SSURef_NR99_tax_silva.fasta"
+
+# medaka model matches dorado basecaller model
+medaka_model: r1041_e82_400bps_sup_v5.0.0
+
+# clustering
+otu_id_primary: 0.99
+otu_id_legacy: 0.97
+
+# ASV branch (choose one)
+asv_method: nanoasv   # nanoasv | nanoclust | dada2_ont
+
+map_id: 0.97        # identity when mapping reads back to OTU refs for counts
+strand: both        # plus|both — 'both' is safer for ONT 16S orientation
+nanoasv_bin: nanoasv   # allow renaming the CLI if different on your machine
+medaka_gpu: true       # set false to use a CPU env if you need to
+
+exclude_glob:
+  - "*_NTC.fastq"
+  - "*_unclassified.fastq"
+  

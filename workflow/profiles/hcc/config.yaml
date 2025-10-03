@@ -1,0 +1,25 @@
+# workflow/profiles/hcc/config.yaml
+executor: slurm
+default-resources:
+  - mem_mb=64000
+  - runtime="04:00:00"
+  - partition="batch,guest"
+use-conda: true
+conda-prefix: "/mnt/nrdstor/richlab/aliciarich/conda"   # optional, keeps envs off $HOME
+
+use-singularity: true
+# Snakemake uses "singularity" naming but it works with Apptainer.
+singularity-args: >
+  --nv
+  --bind /work,/mnt/nrdstor,/common,/home
+  --containall
+singularity-prefix: "/mnt/nrdstor/richlab/aliciarich/singularity"   # cache on NRDStor
+
+latency-wait: 60
+restart-times: 1
+max-jobs-per-second: 10
+printshellcmds: true
+slurm:
+  timecmd: "--time={resources.runtime}"
+  partitioncmd: "--partition={resources.partition}"
+  memcmd: "--mem={resources.mem_mb}"
