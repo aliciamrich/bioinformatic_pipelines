@@ -1,6 +1,6 @@
 channels: [bioconda, conda-forge, defaults]
 dependencies:
-  - medaka=2.1.0
+  - medaka
   - tensorflow=2.12.*        # GPU build
   - cudnn=8.9.*
   - cudatoolkit=11.8

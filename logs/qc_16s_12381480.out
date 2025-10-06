@@ -1,0 +1,81 @@
+Checking subset FASTQs in: /work/richlab/aliciarich/datasets/16s/culi/raw_subset
+total 44119
+-rw-r--r-- 1 aliciarich richlab 40639118 Oct  3 17:57 00acb78c-e671-461f-8b11-308247e0068a_HDZ-258-S162.fastq
+-rw-r--r-- 1 aliciarich richlab  6630939 Oct  3 17:58 4ad5b41b-4ee5-4c56-8db7-ce1c32da3540_HDZ-176-S51.fastq
+-rw-r--r-- 1 aliciarich richlab 12178318 Oct  3 17:58 4ad5b41b-4ee5-4c56-8db7-ce1c32da3540_HDZ-182-S52.fastq
+Count:
+3
+host: c1505.swan.hcc.unl.edu
+Building DAG of jobs...
+Conda environment workflow/envs/vsearch_mafft.yml will be created.
+Conda environment workflow/envs/fastcat.yml will be created.
+Conda environment workflow/envs/spoa.yml will be created.
+Conda environment workflow/envs/vsearch.yml will be created.
+Conda environment workflow/envs/nanoplot.yml will be created.
+Conda environment workflow/envs/nanoasv.yml will be created.
+Conda environment workflow/envs/vsearch_py.yml will be created.
+Conda environment workflow/envs/isonclust3.yml will be created.
+Job stats:
+job               count
+--------------  -------
+fastcat_filter        1
+nanoplot_qc           1
+total                 2
+
+
+[Fri Oct  3 18:32:34 2025]
+rule fastcat_filter:
+    input: /work/richlab/aliciarich/datasets/16s/culi/raw_subset
+    output: /work/richlab/aliciarich/datasets/16s/culi/tmp/filtered
+    log: /work/richlab/aliciarich/datasets/16s/culi/logs/fastcat_filter.log
+    jobid: 1
+    benchmark: /work/richlab/aliciarich/datasets/16s/culi/benchmarks/fastcat_filter.tsv
+    reason: Missing output files: /work/richlab/aliciarich/datasets/16s/culi/tmp/filtered, /work/richlab/aliciarich/datasets/16s/culi/benchmarks/fastcat_filter.tsv
+    threads: 16
+    resources: mem_mb=64000, mem_mib=61036, disk_mb=<TBD>, tmpdir=<TBD>, runtime=<TBD>, partition=<TBD>
+Shell command: 
+      set -euo pipefail
+      mkdir -p /work/richlab/aliciarich/datasets/16s/culi/tmp/filtered
+      shopt -s nullglob
+      for fq in /work/richlab/aliciarich/datasets/16s/culi/raw_subset/*.fastq; do
+        base=$(basename "$fq")
+        for pat in *_NTC.fastq *_unclassified.fastq; do
+          [[ -n "$pat" && "$base" == $pat ]] && continue 2
+        done
+        out="/work/richlab/aliciarich/datasets/16s/culi/tmp/filtered/${base}"
+        fastcat --dust --min_qscore 15 \
+                --min_length 1300 --max_length 1700 \
+                "$fq" > "$out"
+      done
+    
+
+[Fri Oct  3 18:32:34 2025]
+rule nanoplot_qc:
+    input: /work/richlab/aliciarich/datasets/16s/culi/tmp/filtered
+    output: /work/richlab/aliciarich/datasets/16s/culi/qc/nanoplot
+    log: /work/richlab/aliciarich/datasets/16s/culi/logs/nanoplot_qc.log
+    jobid: 0
+    reason: Missing output files: /work/richlab/aliciarich/datasets/16s/culi/qc/nanoplot; Input files updated by another job: /work/richlab/aliciarich/datasets/16s/culi/tmp/filtered
+    threads: 4
+    resources: mem_mb=64000, mem_mib=61036, disk_mb=<TBD>, tmpdir=<TBD>, runtime=<TBD>, partition=<TBD>
+Shell command: 
+      set -euo pipefail
+      mkdir -p /work/richlab/aliciarich/datasets/16s/culi/qc/nanoplot
+      cat /work/richlab/aliciarich/datasets/16s/culi/tmp/filtered/*.fastq > /work/richlab/aliciarich/datasets/16s/culi/qc/nanoplot/all.fastq
+      NanoPlot --fastq /work/richlab/aliciarich/datasets/16s/culi/qc/nanoplot/all.fastq -o /work/richlab/aliciarich/datasets/16s/culi/qc/nanoplot --drop_outliers \
+               --maxlength 1700 --minlength 1300
+    
+Job stats:
+job               count
+--------------  -------
+fastcat_filter        1
+nanoplot_qc           1
+total                 2
+
+Reasons:
+    (check individual jobs above for details)
+    input files updated by another job:
+        nanoplot_qc
+    output files have to be generated:
+        fastcat_filter, nanoplot_qc
+This was a dry-run (flag -n). The order of jobs does not reflect the order of execution.

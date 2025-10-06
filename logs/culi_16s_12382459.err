@@ -1,0 +1,205 @@
+Using profile workflow/profiles/hcc for setting default command line arguments.
+host: c2006.swan.hcc.unl.edu
+Building DAG of jobs...
+You are running snakemake in a SLURM job context. This is not recommended, as it may lead to unexpected behavior. Please run Snakemake directly on the login node.
+SLURM run ID: 4abb5183-51be-4b97-9a72-11e67072f771
+Using shell: /usr/bin/bash
+Provided remote nodes: 32
+Job stats:
+job                      count
+---------------------  -------
+all                          1
+asv_nanoasv                  1
+chimera_taxonomy_tree        1
+fastcat_filter               1
+iqtree2_tree                 1
+isonclust3                   1
+manifest                     1
+map_all_reads                1
+map_r1                       1
+medaka_polish                1
+nanoplot_qc                  1
+otu_table_per_sample         1
+preflight                    1
+racon_round1                 1
+racon_round2                 1
+spoa_consensus               1
+vsearch_pool_cluster         1
+total                       17
+
+Select jobs to execute...
+Execute 3 jobs...
+
+[Fri Oct  3 22:24:10 2025]
+rule preflight:
+    input: /mnt/nrdstor/richlab/aliciarich/databases/itgdb_16s/taxa_itgdb.udb
+    output: /work/richlab/aliciarich/datasets/16s/culi/tmp/preflight.ok
+    jobid: 1
+    reason: Missing output files: /work/richlab/aliciarich/datasets/16s/culi/tmp/preflight.ok
+    resources: mem_mb=64000, mem_mib=61036, disk_mb=1484, disk_mib=1416, tmpdir=<TBD>, runtime=240, partition=batch,guest
+Shell command: None
+No SLURM account given, trying to guess.
+Unable to guess SLURM account. Trying to proceed without.
+Job 1 has been submitted with SLURM jobid 12382465 (log: /lustre/work/richlab/aliciarich/pipeline_16s/.snakemake/slurm_logs/rule_preflight/12382465.log).
+
+[Fri Oct  3 22:24:10 2025]
+rule manifest:
+    output: /work/richlab/aliciarich/datasets/16s/culi/manifest.txt
+    jobid: 2
+    reason: Missing output files: /work/richlab/aliciarich/datasets/16s/culi/manifest.txt
+    resources: mem_mb=64000, mem_mib=61036, disk_mb=50000, disk_mib=47684, tmpdir=<TBD>, runtime=240, partition=batch,guest
+Shell command: None
+Job 2 has been submitted with SLURM jobid 12382466 (log: /lustre/work/richlab/aliciarich/pipeline_16s/.snakemake/slurm_logs/rule_manifest/12382466.log).
+
+[Fri Oct  3 22:24:10 2025]
+rule fastcat_filter:
+    input: /work/richlab/aliciarich/datasets/16s/culi/raw
+    output: /work/richlab/aliciarich/datasets/16s/culi/tmp/filtered
+    log: /work/richlab/aliciarich/datasets/16s/culi/logs/fastcat_filter.log
+    jobid: 3
+    benchmark: /work/richlab/aliciarich/datasets/16s/culi/benchmarks/fastcat_filter.tsv
+    reason: Missing output files: /work/richlab/aliciarich/datasets/16s/culi/benchmarks/fastcat_filter.tsv, /work/richlab/aliciarich/datasets/16s/culi/tmp/filtered
+    threads: 16
+    resources: mem_mb=64000, mem_mib=61036, disk_mb=1000, disk_mib=954, tmpdir=<TBD>, runtime=240, partition=batch,guest
+Shell command: 
+      set -euo pipefail
+      mkdir -p /work/richlab/aliciarich/datasets/16s/culi/tmp/filtered
+      shopt -s nullglob
+      for fq in /work/richlab/aliciarich/datasets/16s/culi/raw/*.fastq; do
+        base=$(basename "$fq")
+
+        # Skip controls/unclassified
+        if [[ "$base" == *"_NTC.fastq" || "$base" == *"_unclassified.fastq" ]]; then
+          continue
+        fi
+
+        # Optional extra skips from config: exclude_glob: ["*_blank.fastq", "*_lowDNA.fastq"]
+        for pat in *_NTC.fastq *_unclassified.fastq; do
+          # quote "$pat" so the shell doesn't expand it against CWD
+          [[ -n "$pat" && "$base" == "$pat" ]] && continue 2
+        done
+
+        out="/work/richlab/aliciarich/datasets/16s/culi/tmp/filtered/${base}"
+        fastcat --dust --min_qscore 15 \
+                --min_length 1300 --max_length 1700 \
+                "$fq" > "$out"
+      done
+    
+Job 3 has been submitted with SLURM jobid 12382467 (log: /lustre/work/richlab/aliciarich/pipeline_16s/.snakemake/slurm_logs/rule_fastcat_filter/12382467.log).
+Touching output file /work/richlab/aliciarich/datasets/16s/culi/tmp/preflight.ok.
+[Fri Oct  3 22:24:44 2025]
+Finished jobid: 1 (Rule: preflight)
+1 of 17 steps (6%) done
+[Fri Oct  3 22:24:44 2025]
+Finished jobid: 2 (Rule: manifest)
+2 of 17 steps (12%) done
+[Fri Oct  3 22:25:24 2025]
+Error in rule fastcat_filter:
+    message: SLURM-job '12382467' failed, SLURM status is: 'FAILED'. For further error details see the cluster/cloud log and the log files of the involved rule(s).
+    jobid: 3
+    input: /work/richlab/aliciarich/datasets/16s/culi/raw
+    output: /work/richlab/aliciarich/datasets/16s/culi/tmp/filtered
+    log: /work/richlab/aliciarich/datasets/16s/culi/logs/fastcat_filter.log, /lustre/work/richlab/aliciarich/pipeline_16s/.snakemake/slurm_logs/rule_fastcat_filter/12382467.log (check log file(s) for error details)
+    conda-env: /mnt/nrdstor/richlab/aliciarich/conda/7d66d146bfe111381697be6b987a9b4a_
+    shell:
+        
+      set -euo pipefail
+      mkdir -p /work/richlab/aliciarich/datasets/16s/culi/tmp/filtered
+      shopt -s nullglob
+      for fq in /work/richlab/aliciarich/datasets/16s/culi/raw/*.fastq; do
+        base=$(basename "$fq")
+
+        # Skip controls/unclassified
+        if [[ "$base" == *"_NTC.fastq" || "$base" == *"_unclassified.fastq" ]]; then
+          continue
+        fi
+
+        # Optional extra skips from config: exclude_glob: ["*_blank.fastq", "*_lowDNA.fastq"]
+        for pat in *_NTC.fastq *_unclassified.fastq; do
+          # quote "$pat" so the shell doesn't expand it against CWD
+          [[ -n "$pat" && "$base" == "$pat" ]] && continue 2
+        done
+
+        out="/work/richlab/aliciarich/datasets/16s/culi/tmp/filtered/${base}"
+        fastcat --dust --min_qscore 15 \
+                --min_length 1300 --max_length 1700 \
+                "$fq" > "$out"
+      done
+    
+        (command exited with non-zero exit code)
+    external_jobid: 12382467
+Trying to restart job 3.
+Select jobs to execute...
+Execute 1 jobs...
+
+[Fri Oct  3 22:25:24 2025]
+rule fastcat_filter:
+    input: /work/richlab/aliciarich/datasets/16s/culi/raw
+    output: /work/richlab/aliciarich/datasets/16s/culi/tmp/filtered
+    log: /work/richlab/aliciarich/datasets/16s/culi/logs/fastcat_filter.log
+    jobid: 3
+    benchmark: /work/richlab/aliciarich/datasets/16s/culi/benchmarks/fastcat_filter.tsv
+    reason: Missing output files: /work/richlab/aliciarich/datasets/16s/culi/benchmarks/fastcat_filter.tsv, /work/richlab/aliciarich/datasets/16s/culi/tmp/filtered
+    threads: 16
+    resources: mem_mb=64000, mem_mib=61036, disk_mb=1000, disk_mib=954, tmpdir=<TBD>, runtime=240, partition=batch,guest
+Shell command: 
+      set -euo pipefail
+      mkdir -p /work/richlab/aliciarich/datasets/16s/culi/tmp/filtered
+      shopt -s nullglob
+      for fq in /work/richlab/aliciarich/datasets/16s/culi/raw/*.fastq; do
+        base=$(basename "$fq")
+
+        # Skip controls/unclassified
+        if [[ "$base" == *"_NTC.fastq" || "$base" == *"_unclassified.fastq" ]]; then
+          continue
+        fi
+
+        # Optional extra skips from config: exclude_glob: ["*_blank.fastq", "*_lowDNA.fastq"]
+        for pat in *_NTC.fastq *_unclassified.fastq; do
+          # quote "$pat" so the shell doesn't expand it against CWD
+          [[ -n "$pat" && "$base" == "$pat" ]] && continue 2
+        done
+
+        out="/work/richlab/aliciarich/datasets/16s/culi/tmp/filtered/${base}"
+        fastcat --dust --min_qscore 15 \
+                --min_length 1300 --max_length 1700 \
+                "$fq" > "$out"
+      done
+    
+Job 3 has been submitted with SLURM jobid 12382472 (log: /lustre/work/richlab/aliciarich/pipeline_16s/.snakemake/slurm_logs/rule_fastcat_filter/12382472.log).
+[Fri Oct  3 22:26:14 2025]
+Error in rule fastcat_filter:
+    message: SLURM-job '12382472' failed, SLURM status is: 'FAILED'. For further error details see the cluster/cloud log and the log files of the involved rule(s).
+    jobid: 3
+    input: /work/richlab/aliciarich/datasets/16s/culi/raw
+    output: /work/richlab/aliciarich/datasets/16s/culi/tmp/filtered
+    log: /work/richlab/aliciarich/datasets/16s/culi/logs/fastcat_filter.log, /lustre/work/richlab/aliciarich/pipeline_16s/.snakemake/slurm_logs/rule_fastcat_filter/12382472.log (check log file(s) for error details)
+    conda-env: /mnt/nrdstor/richlab/aliciarich/conda/7d66d146bfe111381697be6b987a9b4a_
+    shell:
+        
+      set -euo pipefail
+      mkdir -p /work/richlab/aliciarich/datasets/16s/culi/tmp/filtered
+      shopt -s nullglob
+      for fq in /work/richlab/aliciarich/datasets/16s/culi/raw/*.fastq; do
+        base=$(basename "$fq")
+
+        # Skip controls/unclassified
+        if [[ "$base" == *"_NTC.fastq" || "$base" == *"_unclassified.fastq" ]]; then
+          continue
+        fi
+
+        # Optional extra skips from config: exclude_glob: ["*_blank.fastq", "*_lowDNA.fastq"]
+        for pat in *_NTC.fastq *_unclassified.fastq; do
+          # quote "$pat" so the shell doesn't expand it against CWD
+          [[ -n "$pat" && "$base" == "$pat" ]] && continue 2
+        done
+
+        out="/work/richlab/aliciarich/datasets/16s/culi/tmp/filtered/${base}"
+        fastcat --dust --min_qscore 15 \
+                --min_length 1300 --max_length 1700 \
+                "$fq" > "$out"
+      done
+    
+        (command exited with non-zero exit code)
+    external_jobid: 12382472
+Shutting down, this might take some time.

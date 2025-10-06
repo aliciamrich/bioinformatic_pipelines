@@ -1,0 +1,30 @@
+Bootstrap: docker
+From: mambaorg/micromamba:1.5.8
+
+%labels
+    Author Alicia Rich / lab runtime container for fastcat
+    Description fastcat + helpers (NanoPlot, NanoFilt) via conda
+
+%post
+    # Run everything under bash; micromamba is preinstalled in this base image
+    /bin/bash -lc "micromamba install -y -n base \
+        -c nanoporetech -c bioconda -c conda-forge \
+        fastcat nanofilt NanoPlot"
+    /bin/bash -lc "micromamba clean -a -y"
+
+%environment
+    export CONDA_PREFIX=/opt/conda
+    export MAMBA_ROOT_PREFIX=/opt/conda
+    export PATH=/opt/conda/bin:$PATH
+    export LC_ALL=C.UTF-8
+    export LANG=C.UTF-8
+
+%help
+    apptainer exec fastcat.sif fastcat --help
+    
+%apprun fastcat
+    exec /opt/conda/bin/fastcat "$@"
+    
+%runscript
+    # Make `apptainer run fastcat.sif ...` behave like `fastcat ...`
+    exec fastcat "$@"

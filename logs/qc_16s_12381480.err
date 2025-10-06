@@ -1,0 +1,47 @@
+Using profile workflow/profiles/hcc for setting default command line arguments.
+Using profile workflow/profiles/hcc for setting default command line arguments.
+host: c1505.swan.hcc.unl.edu
+Building DAG of jobs...
+Creating conda environment workflow/envs/vsearch.yml...
+Downloading and installing remote packages.
+Cleaning up conda package tarballs.
+Environment for /lustre/work/richlab/aliciarich/pipeline_16s/workflow/envs/vsearch.yml created (location: ../../../../../mnt/nrdstor/richlab/aliciarich/conda/1de1a30c86fd56ab6dc2a466e1f6e5dd_)
+Creating conda environment workflow/envs/fastcat.yml...
+Downloading and installing remote packages.
+CreateCondaEnvironmentException:
+Could not create conda environment from /lustre/work/richlab/aliciarich/pipeline_16s/workflow/envs/fastcat.yml:
+Command:
+conda env create --quiet --no-default-packages --file "/mnt/nrdstor/richlab/aliciarich/conda/749d934cc87db27461c8fcefdd44d1d6_.yaml" --prefix "/mnt/nrdstor/richlab/aliciarich/conda/749d934cc87db27461c8fcefdd44d1d6_"
+Output:
+Channels:
+ - bioconda
+ - conda-forge
+ - defaults
+ - hcc
+ - file:///util/opt/conda_repo
+Platform: linux-64
+Collecting package metadata (repodata.json): ...working... done
+Solving environment: ...working... failed
+
+PackagesNotFoundError: The following packages are not available from current channels:
+
+  - fastcat=0.5.0
+
+Current channels:
+
+  - https://conda.anaconda.org/bioconda
+  - https://conda.anaconda.org/conda-forge
+  - https://repo.anaconda.com/pkgs/main
+  - https://repo.anaconda.com/pkgs/r
+  - https://conda.anaconda.org/hcc
+  - file:///util/opt/conda_repo
+
+To search for alternate channels that may provide the conda package you're
+looking for, navigate to
+
+    https://anaconda.org
+
+and use the search bar at the top of the page.
+
+
+

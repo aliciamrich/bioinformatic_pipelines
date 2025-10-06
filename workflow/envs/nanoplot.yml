@@ -1,4 +1,13 @@
-channels: [bioconda, conda-forge, defaults]
+# workflow/envs/nanoplot.yml
+name: nanoplot
+channels:
+  - conda-forge
+  - bioconda
+channel_priority: strict
 dependencies:
-  - nanoplot=1.42.0
   - python=3.11
+  - nanoplot=1.42.0
+  - matplotlib-base
+  - pandas
+  - numpy
+  - pillow          # image writing

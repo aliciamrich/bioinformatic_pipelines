@@ -7,10 +7,15 @@
 #SBATCH --output=/work/richlab/aliciarich/pipeline_16s/logs/culi_16s_%j.out
 #SBATCH --error=/work/richlab/aliciarich/pipeline_16s/logs/culi_16s_%j.err
 
+set -euo pipefail
 module load apptainer
-cd /work/richlab/aliciarich/pipeline_16s
+module load anaconda
 
+source "$(conda info --base)/etc/profile.d/conda.sh"
+conda activate $NRDSTOR/snakemake
+
+# --- repo root (code) ---
+cd /work/richlab/aliciarich/pipeline_16s
 export PROJ_ROOT=$PWD
-snakemake --profile workflow/profiles/hcc \
-  --config dataset=culi reads_in=/work/richlab/aliciarich/datasets/16s/culi/raw \
-  --jobs 100 --rerun-incomplete --keep-going
+
+snakemake --use-conda --profile workflow/profiles/hcc --jobs 32 --printshellcmds --rerun-incomplete

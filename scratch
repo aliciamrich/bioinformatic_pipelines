@@ -1,0 +1,50 @@
+srun --mem=16gb --nodes=1 --ntasks-per-node=4 --pty $SHELL
+
+snakemake --profile workflow/profiles/hcc fastcat_filter nanoplot_qc
+
+
+snakemake fastcat_filter nanoplot_qc \
+  --use-apptainer \
+  --apptainer-args="--bind /work,/mnt/nrdstor" \
+  --cores 8 --printshellcmds
+  
+12385072
+12385075
+
+sed -n '1,200p' .snakemake/slurm_logs/rule_fastcat_filter/12385072.log
+
+snakemake fastcat_filter nanoplot_qc \
+  --profile workflow/profiles/hcc \
+  --rerun-incomplete
+  
+  
+# Dry-run with rulegraph + reasons
+snakemake -n -r -p --profile workflow/profiles/hcc all
+
+# If it looks good, run it (keep-going helps long clusters)
+snakemake --profile workflow/profiles/hcc all \
+  --rerun-incomplete --keep-going --latency-wait 120
+  
+# Dry run, print commands
+snakemake -n -p --profile workflow/profiles/hcc all
+
+# Show *why* rules would rerun
+snakemake -n --list-changes code,input,params --profile workflow/profiles/hcc all
+
+# Or a quick table
+snakemake -n --detailed-summary --profile workflow/profiles/hcc
+
+snakemake --profile workflow/profiles/hcc all \
+  --rerun-incomplete --keep-going --latency-wait 120
+  
+
+export OUT_ROOT=/work/richlab/aliciarich/datasets/16s
+snakemake --profile profiles/hcc \
+  ${APPT:-} "${BIND:-}" \
+  --config pod5_in=/work/richlab/aliciarich/datasets/16s/loris/pod5 reads_in= \
+  --rerun-incomplete -p all
+  
+  snakemake --profile profiles/hcc \
+  --executor slurm --mode default --jobs 16 \
+  --config pod5_in=/work/richlab/aliciarich/datasets/16s/loris/pod5 \
+  -n -p -R dorado_basecall

@@ -1,0 +1,3 @@
+Using profile workflow/profiles/hcc for setting default command line arguments.
+Support for alternative conda frontends has been deprecated in favor of simpler support and code base. This should not cause issues since current conda releases rely on fast solving via libmamba. Ignoring the alternative conda frontend setting (mamba).
+Error: maximum number of parallel jobs/used nodes has to be specified for remote execution (use --jobs N with N being a number >= 1)

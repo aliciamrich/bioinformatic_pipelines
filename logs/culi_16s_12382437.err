@@ -1,0 +1,34 @@
+Using profile workflow/profiles/hcc for setting default command line arguments.
+Support for alternative conda frontends has been deprecated in favor of simpler support and code base. This should not cause issues since current conda releases rely on fast solving via libmamba. Ignoring the alternative conda frontend setting (mamba).
+host: c2005.swan.hcc.unl.edu
+Building DAG of jobs...
+You are running snakemake in a SLURM job context. This is not recommended, as it may lead to unexpected behavior. Please run Snakemake directly on the login node.
+SLURM run ID: f67f8248-e8b3-4630-a7bd-d7bfcd2a0912
+Using shell: /usr/bin/bash
+Provided remote nodes: 32
+Job stats:
+job                      count
+---------------------  -------
+all                          1
+asv_nanoasv                  1
+chimera_taxonomy_tree        1
+fastcat_filter               1
+iqtree2_tree                 1
+isonclust3                   1
+manifest                     1
+map_all_reads                1
+map_r1                       1
+medaka_polish                1
+nanoplot_qc                  1
+otu_table_per_sample         1
+preflight                    1
+racon_round1                 1
+racon_round2                 1
+spoa_consensus               1
+vsearch_pool_cluster         1
+total                       17
+
+Select jobs to execute...
+Cleaning up log files older than 10 day(s).
+WorkflowError:
+Cannot parse runtime value into minutes for setting runtime resource: 04:00:00

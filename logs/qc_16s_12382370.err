@@ -1,0 +1,12 @@
+Using profile workflow/profiles/hcc for setting default command line arguments.
+Support for alternative conda frontends has been deprecated in favor of simpler support and code base. This should not cause issues since current conda releases rely on fast solving via libmamba. Ignoring the alternative conda frontend setting (mamba).
+Using profile workflow/profiles/hcc for setting default command line arguments.
+Support for alternative conda frontends has been deprecated in favor of simpler support and code base. This should not cause issues since current conda releases rely on fast solving via libmamba. Ignoring the alternative conda frontend setting (mamba).
+host: c1507.swan.hcc.unl.edu
+Building DAG of jobs...
+Creating conda environment workflow/envs/vsearch.yml...
+Downloading and installing remote packages.
+Cleaning up conda package tarballs.
+Environment for /lustre/work/richlab/aliciarich/pipeline_16s/workflow/envs/vsearch.yml created (location: ../../../../../mnt/nrdstor/richlab/aliciarich/conda/be4ffda4afdd037075e7adce13d62ea1_)
+Creating conda environment workflow/envs/nanoplot.yml...
+Downloading and installing remote packages.

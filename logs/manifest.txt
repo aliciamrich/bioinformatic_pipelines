@@ -1,0 +1,28 @@
+commit: fatal: not a git repository (or any parent up to mount point /)
+Stopping at filesystem boundary (GIT_DISCOVERY_ACROSS_FILESYSTEM not set).
+dataset: culi
+WORK=/work/richlab/aliciarich
+NRDSTOR=/mnt/nrdstor/richlab/aliciarich
+PROJ_ROOT=/work/richlab/aliciarich/pipeline_16s
+
+config:
+project: culi_16S
+dataset: culi
+minlength: 1300
+maxlength: 1700
+min_qscore: 15
+out_root: /work/richlab/aliciarich/datasets/16s
+reads_in: /work/richlab/aliciarich/datasets/16s/culi/raw
+itgdb_udb: /mnt/nrdstor/richlab/aliciarich/databases/itgdb_16s/taxa_itgdb.udb
+silva_fasta: /mnt/nrdstor/richlab/aliciarich/databases/silva138/SILVA_138.2_SSURef_NR99_tax_silva.fasta
+medaka_model: r1041_e82_400bps_sup_v5.0.0
+otu_id_primary: 0.99
+otu_id_legacy: 0.97
+asv_method: nanoasv
+map_id: 0.97
+strand: both
+nanoasv_bin: nanoasv
+medaka_gpu: true
+exclude_glob:
+- '*_NTC.fastq'
+- '*_unclassified.fastq'

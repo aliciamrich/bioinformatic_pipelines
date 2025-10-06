@@ -1,4 +1,4 @@
 channels: [bioconda, conda-forge, defaults]
 dependencies:
-  - isonclust3=0.0.7
+  - isonclust3
   - python=3.11

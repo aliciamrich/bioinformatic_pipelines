@@ -1,3 +1,0 @@
-channels: [bioconda, conda-forge, defaults]
-dependencies:
-  - fastcat=0.5.0
